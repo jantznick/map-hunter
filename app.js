@@ -1,10 +1,10 @@
 const express = require('express');
-const res = require('express/lib/response');
 const request = require('request');
+require('dotenv').config()
 const app = express()
 const port = 3000
 
-const googleMapsApiKey = "";
+const googleMapsApiKey = process.env.googleMapsApiKey;
 
 app.use(express.static('public'))
 
