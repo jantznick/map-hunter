@@ -9,7 +9,7 @@
 </head>
 <body>
 
-	<div id="map"></div>
+	<div id="map">Loading location, please accept browser prompts</div>
 	
 	<script
 		src="https://maps.googleapis.com/maps/api/js?key=BLAH&callback=initMap&v=weekly"
@@ -17,61 +17,103 @@
 	></script>
 
 	<script>
+
+		let markers = [];
 		// Initialize and add the map
 		function initMap() {
-		// The location of Uluru
-			const uluru = { lat: -25.344, lng: 131.031 };
-			// The map, centered at Uluru
-			const map = new google.maps.Map(document.getElementById("map"), {
-				zoom: 15,
-				center: uluru,
-			});
-			// The marker, positioned at Uluru
-			const marker = new google.maps.Marker({
-				position: uluru,
-				map: map,
-			});
-			infoWindow = new google.maps.InfoWindow();
+			// if (navigator.geolocation) {
+			// 	navigator.geolocation.getCurrentPosition(
+			// 		(position) => {
+						// const pos = {
+						// 	lat: position.coords.latitude,
+						// 	lng: position.coords.longitude,
+						// };
+						const haightAshbury = { lat: 37.769, lng: -122.446 };
+						const map = new google.maps.Map(document.getElementById("map"), {
+							zoom: 15,
+							center: haightAshbury
+						});
+						const homeMarker = new google.maps.Marker({
+							position: haightAshbury,
+							map: map,
+						});
+						markers.push(homeMarker);
+						map.addListener("click", (e) => {
+							getNearestRoad(e.latLng.toJSON(), map);
+						});
+						const infowindow = new google.maps.InfoWindow({
+							content: "Testing info window",
+						});
+						homeMarker.addListener("click", () => {
+							infowindow.open({
+								anchor: homeMarker,
+								map,
+								shouldFocus: false,
+							});
+						});
 
-			const locationButton = document.createElement("button");
-
-			locationButton.textContent = "Pan to Current Location";
-			locationButton.classList.add("custom-map-control-button");
-			map.controls[google.maps.ControlPosition.TOP_CENTER].push(locationButton);
-			locationButton.addEventListener("click", () => {
-				// Try HTML5 geolocation.
-				if (navigator.geolocation) {
-					navigator.geolocation.getCurrentPosition(
-					(position) => {
-						const pos = {
-							lat: position.coords.latitude,
-							lng: position.coords.longitude,
-						};
-
-						infoWindow.setPosition(pos);
-						infoWindow.setContent("Location found.");
-						infoWindow.open(map);
-						map.setCenter(pos);
-					},
-					() => {
-						handleLocationError(true, infoWindow, map.getCenter());
-					}
-					);
-				} else {
-					// Browser doesn't support Geolocation
-					handleLocationError(false, infoWindow, map.getCenter());
-				}
-			});
+						const flightPlanCoordinates = [
+							{ lat: 37.772, lng: -122.214 },
+							{ lat: 21.291, lng: -157.821 },
+							{ lat: -18.142, lng: 178.431 },
+							{ lat: -27.467, lng: 153.027 },
+						];
+			// 		},
+			// 		() => {
+			// 			handleLocationError();
+			// 		}
+			// 	);
+			// } else {
+			// 	handleLocationError(false, infoWindow, map.getCenter());
+			// }
 		};
 
-		function handleLocationError(browserHasGeolocation, infoWindow, pos) {
-			infoWindow.setPosition(pos);
-			infoWindow.setContent(
-				browserHasGeolocation
-					? "Error: The Geolocation service failed."
-					: "Error: Your browser doesn't support geolocation."
-				);
-			infoWindow.open(map);
+		function getDirections(map) {
+			let directionArray = [];
+			const from = markers[markers.length - 2];
+			const to = markers[markers.length - 1];
+			fetch(`/directions?fromLat=${from.position.lat()}&fromLong=${from.position.lng()}&toLat=${to.position.lat()}&toLong=${to.position.lng()}`)
+				.then((response) => response.json())
+				.then((data) => {
+					console.log(data);
+					data[0].steps.forEach(step => {
+						directionArray.push(step.start_location)
+						directionArray.push(step.end_location)
+					})
+					drawDirections(directionArray, map)
+				});
+		}
+
+		function drawDirections(directionArray, map) {
+			const directions = new google.maps.Polyline({
+				path: directionArray,
+				geodesic: true,
+				strokeColor: "#FF0000",
+				strokeOpacity: 1.0,
+				strokeWeight: 2,
+			});
+
+			directions.setMap(map);
+		}
+
+		function getNearestRoad(latLong, map) {
+			fetch(`/nearest-road?lat=${latLong.lat}&long=${latLong.lng}`)
+				.then((response) => response.json())
+				.then((data) => addMarker(data, map));
+		}
+
+		function addMarker(latLng, map) {
+			var newMarkerLatLng = new google.maps.LatLng(latLng.latitude, latLng.longitude);
+			const marker = new google.maps.Marker({
+				position: newMarkerLatLng,
+				map: map
+			});
+			markers.push(marker);
+			getDirections(map);
+		}
+
+		function handleLocationError() {
+			document.getElementById("map").innerText = "Can not use browser location data, please enable and reload the page"
 		}
 
 		window.initMap = initMap;
