@@ -87,30 +87,28 @@ function removeMarker(id) {
 	markers[id].setMap(null);
 	directionsArray[id].setMap(null);
 	directionsArray[id - 1].setMap(null);
-	directionsArray.splice(id,1);
-	getDirections(id - 1, id + 1);
+	directionsArray = directionsArray.filter((el,i,array) => el != array[id]);
+	directionsArray = directionsArray.filter((el,i,array) => el != array[id-1]);
+	markers = markers.filter((el,i,array) => el != array[id])
+	getDirections(id - 1, id);
 }
 
-function getDirections(fromId = markers.length - 2, toId = markers.length - 1) {
-	//todo figure out why removing a marker is not changing the directions array right
+function getDirections(fromId = markers.length - 2, toId = markers.length - 1, id = null) {
 	let directionArray = [];
 	const from = markers[fromId];
 	const to = markers[toId];
-	console.log(from)
-	console.log(to)
 	fetch(`/directions?fromLat=${from.position.lat()}&fromLong=${from.position.lng()}&toLat=${to.position.lat()}&toLong=${to.position.lng()}`)
 		.then((response) => response.json())
 		.then((data) => {
-			console.log(data);
 			data[0].steps.forEach(step => {
 				directionArray.push(step.start_location)
 				directionArray.push(step.end_location)
 			})
-			drawDirections(directionArray)
+			drawDirections(directionArray, id)
 		});
 }
 
-function drawDirections(directionArray) {
+function drawDirections(directionArray, id) {
 	const directions = new google.maps.Polyline({
 		path: directionArray,
 		geodesic: true,
@@ -118,7 +116,7 @@ function drawDirections(directionArray) {
 		strokeOpacity: 1.0,
 		strokeWeight: 2,
 	});
-	directionsArray.push(directions);
+	directionsArray.splice((id ? id : directionsArray.length), 0, directions);
 
 	directions.setMap(coolMap);
 }
